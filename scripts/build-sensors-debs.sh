@@ -56,7 +56,7 @@ fetch() {
             echo "${DSC_SHA256[$name]}  $base.dsc" | sha256sum -c - || die "$base.dsc checksum mismatch"
             while read -r file; do
                 curl -fsSLO "$url/$file" || continue 2
-            done < <(awk '/^Files:/{f=1;next} /^[^ ]/{f=0} f{print $3}' "$base.dsc")
+            done < <(awk '/^Files:/{f=1;next} /^[^ ]/{f=0} f && NF == 3 {print $3}' "$base.dsc")
             dpkg-source -x "$base.dsc" "$name"
             return
         fi
