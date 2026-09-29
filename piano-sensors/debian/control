@@ -1,0 +1,22 @@
+Source: piano-sensors
+Section: misc
+Priority: optional
+Maintainer: piano mainline contributors <piano@localhost>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.7.2
+Rules-Requires-Root: no
+
+Package: piano-sensors
+Architecture: all
+Depends: ${misc:Depends},
+         erofs-utils,
+         hexagonrpcd (>= 0.4.0-2+piano1),
+         iio-sensor-proxy (>= 3.9-1+piano1),
+         kmod,
+         mount
+Description: Sensors support for the Xiaomi Pad 8 Pro (piano)
+ Imports the sensors PD inputs from the tablet's own partitions on first
+ boot (the JSON configuration from odm, the calibration and registry from
+ persist, both opened read-only), and sets up hexagonrpcd and
+ iio-sensor-proxy for the SM8750 sensors hub: device node, data
+ directory, accelerometer mount matrix and start order.

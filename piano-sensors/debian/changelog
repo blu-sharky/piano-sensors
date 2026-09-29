@@ -1,0 +1,6 @@
+piano-sensors (1) trixie; urgency=medium
+
+  * Initial release: sensors PD inputs imported from the device's own
+    partitions, hexagonrpcd and iio-sensor-proxy set up for piano.
+
+ -- piano mainline contributors <piano@localhost>  Tue, 29 Sep 2026 22:00:00 +0800

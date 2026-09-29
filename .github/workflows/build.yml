@@ -1,0 +1,40 @@
+name: build
+
+# Build the piano sensors packages. debian-piano builds the same way from
+# this repository's main branch when it assembles the image; this workflow
+# checks every change here on its own.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: shellcheck
+        run: shellcheck scripts/*.sh piano-sensors/piano-sensors-import
+
+  build:
+    name: build
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build
+        run: scripts/build-in-container.sh out/sensors
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sensors-runtime-debs
+          path: |
+            out/sensors/runtime/
+            out/sensors/SHA256SUMS
+          retention-days: 30

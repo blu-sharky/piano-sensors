@@ -1,0 +1,5 @@
+# Keep the piano builds: stock hexagonrpcd cannot serve the SM8750 sensors
+# PD, and stock iio-sensor-proxy misses early SSC claims.
+Package: src:hexagonrpc src:libssc src:iio-sensor-proxy
+Pin: version *+piano*
+Pin-Priority: 1001
