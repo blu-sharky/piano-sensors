@@ -9,11 +9,14 @@ Rules-Requires-Root: no
 Package: piano-sensors
 Architecture: all
 Depends: ${misc:Depends},
+         dmsetup,
          erofs-utils,
          hexagonrpcd (>= 0.4.0-2+piano1),
          iio-sensor-proxy (>= 3.9-1+piano1),
          kmod,
-         mount
+         mount,
+         python3
+Conflicts: droid-juicer
 Description: Sensors support for the Xiaomi Pad 8 Pro (piano)
  Imports the sensors PD inputs from the tablet's own partitions on first
  boot (the JSON configuration from odm, the calibration and registry from

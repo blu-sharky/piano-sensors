@@ -24,7 +24,7 @@ The source packages come from Debian unstable (libssc 0.4.4-2, iio-sensor-proxy 
 
 The sensors PD needs files that belong to each tablet: the JSON sensor configuration on the odm partition, and the calibration and registry on persist. None of them are shipped. On first boot `piano-sensors-import` copies them into `/var/lib/piano-sensors`:
 
-- odm (EROFS) is read with `dump.erofs`, never mounted;
+- odm_a (EROFS) is a logical partition inside `super`: it is mapped read-only with device-mapper from the super metadata and read with `dump.erofs`, never mounted;
 - persist (ext4) is mounted read-only with `noload`, so it is never written; the ADSP writes its registry into the copy.
 
 Delete `/var/lib/piano-sensors/sensors/config` or `/var/lib/piano-sensors/persist/sensors` to import that part again.

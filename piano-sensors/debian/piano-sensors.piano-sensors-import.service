@@ -1,12 +1,10 @@
 [Unit]
 Description=Import the sensors PD inputs of the Xiaomi Pad 8 Pro
-ConditionFirmware=device-tree-compatible(xiaomi,piano)
-DefaultDependencies=no
-Wants=dev-disk-by\x2dpartlabel-odm_a.device dev-disk-by\x2dpartlabel-persist.device
-After=local-fs.target dev-disk-by\x2dpartlabel-odm_a.device dev-disk-by\x2dpartlabel-persist.device
+After=local-fs.target systemd-udev-trigger.service
 Before=hexagonrpcd.service
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
+TimeoutStartSec=180
 ExecStart=/usr/libexec/piano-sensors/piano-sensors-import
