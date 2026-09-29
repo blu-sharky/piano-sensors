@@ -1,0 +1,5 @@
+# Only the sensors PD is served on piano: the root PD and audio PD daemons
+# that fastrpc-support starts from udev stay masked (audio streams reset the
+# tablet so far).
+/dev/null /etc/systemd/system/adsprpcd.service
+/dev/null /etc/systemd/system/adsprpcd_audiopd.service

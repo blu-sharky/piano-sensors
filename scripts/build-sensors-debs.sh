@@ -4,12 +4,12 @@
 # Usage (as root, in a Debian trixie arm64 system or container):
 #   scripts/build-sensors-debs.sh OUTPUT_DIR
 #
-# Rebuilds three Debian unstable source packages for trixie with a "+piano"
+# Rebuilds two Debian unstable source packages for trixie with a "+piano"
 # version suffix, in dependency order:
 #   libssc            unchanged (not in trixie; iio-sensor-proxy needs it)
 #   iio-sensor-proxy  + patches/iio-sensor-proxy/*.patch
-#   hexagonrpc        + patches/hexagonrpc/*.patch
-# and then the native piano-sensors package from piano-sensors/.
+# adds Qualcomm's FastRPC userspace (adsprpcd) unchanged from trixie-backports
+# contrib, and builds the native piano-sensors package from piano-sensors/.
 #
 # Output:
 #   OUTPUT_DIR/all/      every binary package of the build
@@ -27,12 +27,10 @@ BUILD_ROOT=/build/sensors
 SOURCES=(
     'libssc 0.4.4-2 libs/libssc'
     'iio-sensor-proxy 3.9-1 i/iio-sensor-proxy'
-    'hexagonrpc 0.4.0-2 h/hexagonrpc'
 )
 declare -A DSC_SHA256=(
     [libssc]=3f79e8cad936a647f2c7773c5fb2fa4fdd3a96d893f70279aa3e7a9b55023fef
     [iio-sensor-proxy]=92fa4df9f49c8c1596dad44b44212ba30f4958acf86327dec215548ffaa716bd
-    [hexagonrpc]=7e9abe86de83f5635e73625958702a33f0f71e3ee2b6d3e31f73d6b586ee7aa1
 )
 MIRROR=${DEBIAN_MIRROR:-https://deb.debian.org/debian}
 SNAPSHOT=https://snapshot.debian.org/archive/debian/20260929T000000Z
@@ -95,7 +93,18 @@ build libssc 'Rebuild for trixie (needed by iio-sensor-proxy SSC support).'
 apt-get install -y --no-install-recommends "$OUTPUT"/all/libssc-dev_*.deb \
     "$OUTPUT"/all/libssc2_*.deb "$OUTPUT"/all/gir1.2-ssc-2_*.deb
 build iio-sensor-proxy 'Start polling for clients that claim SSC sensors during driver open.'
-build hexagonrpc 'Serve the SM8750 sensors PD of the Xiaomi Pad 8 Pro.'
+
+# adsprpcd serves the sensors PD; taken as built by Debian, checksums pinned.
+FASTRPC_POOL=$MIRROR/pool/contrib/f/fastrpc
+FASTRPC_DEBS=(
+    '3beabcb39acdb0f8e6982ea6245d256b2b4cd657198f9161326c986e20e43442 fastrpc-support_1.0.7-2~bpo13+1_arm64.deb'
+    '35df085e1abb15abfba103c9947d86a686fb530c3d383a7f5e10834d51a1df26 libfastrpc1_1.0.7-2~bpo13+1_arm64.deb'
+)
+for entry in "${FASTRPC_DEBS[@]}"; do
+    read -r sum deb <<< "$entry"
+    curl -fsSL -o "$OUTPUT/all/$deb" "$FASTRPC_POOL/$deb" || die "cannot download $deb"
+    echo "$sum  $OUTPUT/all/$deb" | sha256sum -c - || die "$deb checksum mismatch"
+done
 
 cp -r "$REPO/piano-sensors" "$BUILD_ROOT/piano-sensors"
 cd "$BUILD_ROOT/piano-sensors"
@@ -109,7 +118,7 @@ for deb in "$OUTPUT"/all/*.deb; do
         *) cp "$deb" "$OUTPUT/runtime/" ;;
     esac
 done
-for pkg in hexagonrpcd iio-sensor-proxy libssc2 piano-sensors; do
+for pkg in fastrpc-support libfastrpc1 iio-sensor-proxy libssc2 piano-sensors; do
     grep -q . <(find "$OUTPUT/runtime" -name "${pkg}_*.deb") || die "no $pkg package was built"
 done
 (cd "$OUTPUT" && find . -name '*.deb' | sort | xargs sha256sum > SHA256SUMS)

@@ -1,3 +1,15 @@
+piano-sensors (3) trixie; urgency=medium
+
+  * Serve the sensors PD with adsprpcd (Qualcomm FastRPC, Debian
+    fastrpc-support) instead of a patched hexagonrpcd: it implements the
+    remote file calls the PD makes, and opens its paths as they are.
+  * With a valid registry on persist the PD does not read the odm JSON
+    configuration: import persist only, drop the super/odm import.
+  * Override fastrpc-support's udev rule that starts every remote
+    processor, and mask its root PD and audio PD daemons.
+
+ -- piano mainline contributors <piano@localhost>  Wed, 30 Sep 2026 00:30:00 +0800
+
 piano-sensors (2) trixie; urgency=medium
 
   * Read odm_a from the super partition: it is a dynamic partition with

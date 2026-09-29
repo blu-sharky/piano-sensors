@@ -2,32 +2,31 @@
 
 Sensors for the Xiaomi Pad 8 Pro (piano, Qualcomm SM8750) on Debian trixie: accelerometer (screen rotation), ambient light, proximity and compass, served by the Snapdragon Sensor Core on the ADSP.
 
-Mainline Linux already talks to the sensors hub: the `fastrpc` driver exposes the ADSP, libssc speaks its QMI protocol and iio-sensor-proxy hands the readings to the desktop. Two things are missing on this SoC, and this repository adds them as Debian packages with a `+piano` version suffix:
+Mainline Linux already talks to the sensors hub: the `fastrpc` driver exposes the ADSP, Qualcomm's FastRPC userspace (`adsprpcd`, Debian `fastrpc-support`) serves the sensors protection domain, libssc speaks its QMI protocol and iio-sensor-proxy hands the readings to the desktop. This repository adds what is missing on Debian trixie as packages with a `+piano` version suffix:
 
-- **hexagonrpcd** has to serve the sensors protection domain of the ADSP firmware. The SM8750 firmware reads its configuration from `/odm`, writes its registry back to persist, calls extended `apps_std` methods and passes large arguments; stock hexagonrpcd supports none of this and stops.
-- **iio-sensor-proxy** misses a client that claims a sensor while the SSC driver is still opening, so the screen never rotates after boot.
+- **libssc** is not in trixie; it is rebuilt unchanged from Debian unstable.
+- **iio-sensor-proxy** misses a client that claims a sensor while the SSC driver is still opening, so the screen never rotates after boot; it is rebuilt from Debian unstable with a fix.
+- **piano-sensors** ties it together for this tablet.
 
 ## Contents
 
 | Path | Purpose |
 |---|---|
-| `patches/hexagonrpc/` | Patch applied to Debian's `hexagonrpc` source package (GPL-3+) |
 | `patches/iio-sensor-proxy/` | Patch applied to Debian's `iio-sensor-proxy` source package (GPL-2+) |
-| `piano-sensors/` | Native `piano-sensors` package: data import, udev rule with the accelerometer mount matrix, systemd drop-ins, APT pin |
+| `piano-sensors/` | Native `piano-sensors` package: registry import, `adsprpcd-sensorspd` service, udev rule with the accelerometer mount matrix, systemd drop-in, APT pin |
 | `scripts/build-sensors-debs.sh` | Builds everything inside a Debian trixie arm64 system; writes `all/`, `runtime/` and `SHA256SUMS` |
 | `scripts/build-in-container.sh` | Runs the build in a clean `debian:trixie` container on an arm64 host |
 | `.github/workflows/build.yml` | CI: shellcheck, then the build on an arm64 runner |
 
-The source packages come from Debian unstable (libssc 0.4.4-2, iio-sensor-proxy 3.9-1, hexagonrpc 0.4.0-2) and are rebuilt for trixie. Each `.dsc` is checked against a pinned SHA-256; libssc is rebuilt unchanged because trixie lacks it.
+The source packages come from Debian unstable (libssc 0.4.4-2, iio-sensor-proxy 3.9-1) and are rebuilt for trixie; each `.dsc` is checked against a pinned SHA-256. The FastRPC packages (`fastrpc-support`, `libfastrpc1` 1.0.7 from trixie-backports contrib) are used as Debian built them, with pinned checksums.
+
+`fastrpc-support` starts every remote processor and its root and audio PD daemons from udev. On piano the ADSP is started by the image's own service and audio streams are not safe yet, so `piano-sensors` overrides that udev rule and masks those two daemons; only the sensors PD is served.
 
 ## Device data
 
-The sensors PD needs files that belong to each tablet: the JSON sensor configuration on the odm partition, and the calibration and registry on persist. None of them are shipped. On first boot `piano-sensors-import` copies them into `/var/lib/piano-sensors`:
+The sensors PD keeps its registry and calibration on the persist partition, which belongs to each tablet; nothing is shipped. On first boot `piano-sensors-import` copies `sensors/` from persist, mounted read-only with `noload` so the partition is never written, into `/var/lib/piano-sensors/persist/sensors`, and links `/mnt/vendor/persist/sensors` (the path the PD asks for) to it. The ADSP updates its registry in that copy. With the registry Android left on persist, the PD does not need the JSON sensor configuration from odm.
 
-- odm_a (EROFS) is a logical partition inside `super`: it is mapped read-only with device-mapper from the super metadata and read with `dump.erofs`, never mounted;
-- persist (ext4) is mounted read-only with `noload`, so it is never written; the ADSP writes its registry into the copy.
-
-Delete `/var/lib/piano-sensors/sensors/config` or `/var/lib/piano-sensors/persist/sensors` to import that part again.
+Delete `/var/lib/piano-sensors/persist/sensors` to import it again.
 
 ## Build
 

@@ -1,0 +1,3 @@
+# Xiaomi Pad 8 Pro: overrides fastrpc-support's rule, which starts every
+# remote processor as soon as it appears. piano-adsp starts the ADSP at a
+# controlled point of the boot; the other DSPs stay off.

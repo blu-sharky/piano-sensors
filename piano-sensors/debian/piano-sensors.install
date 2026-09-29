@@ -1,5 +1,4 @@
 piano-sensors-import usr/libexec/piano-sensors
-piano-sensors-lp-table usr/libexec/piano-sensors
 piano-sensors.pref etc/apt/preferences.d
-hexagonrpcd-piano.conf usr/lib/systemd/system/hexagonrpcd.service.d
 iio-sensor-proxy-piano.conf usr/lib/systemd/system/iio-sensor-proxy.service.d
+59-fastrpc-remoteproc.rules etc/udev/rules.d

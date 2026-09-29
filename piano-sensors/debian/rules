@@ -6,6 +6,7 @@
 override_dh_installudev:
 	dh_installudev --priority=81
 
-# The import runs from hexagonrpcd's drop-in; it is not enabled on its own.
+# The import runs as a dependency of adsprpcd-sensorspd, not on its own.
 override_dh_installsystemd:
 	dh_installsystemd --name=piano-sensors-import --no-enable --no-start
+	dh_installsystemd --name=adsprpcd-sensorspd --no-start
