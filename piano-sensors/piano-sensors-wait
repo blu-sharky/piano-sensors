@@ -1,0 +1,27 @@
+#!/bin/sh
+# piano-sensors-wait - hold back iio-sensor-proxy until the sensors are up.
+#
+# adsprpcd attaches to the sensors PD at once, but the PD publishes its
+# sensors one by one over the following seconds. iio-sensor-proxy looks each
+# type up once when it starts and never again, so starting it early leaves
+# the desktop with only the sensors that were already there (typically the
+# accelerometer but no light sensor). Run as ExecStartPost of
+# adsprpcd-sensorspd: wait until libssc finds every sensor iio-sensor-proxy
+# uses, then let it start. A sensor that never shows up only costs the
+# timeout; this never fails the unit.
+set -u
+
+TIMEOUT=60
+
+start=$(cut -d. -f1 /proc/uptime)
+for sensor in accelerometer light proximity compass; do
+    until ssccli --sensor "$sensor" --timeout 1 > /dev/null 2>&1; do
+        now=$(cut -d. -f1 /proc/uptime)
+        if [ $((now - start)) -ge "$TIMEOUT" ]; then
+            echo "piano-sensors: no $sensor after $TIMEOUT s, starting without it"
+            continue 2
+        fi
+        sleep 1
+    done
+done
+exit 0

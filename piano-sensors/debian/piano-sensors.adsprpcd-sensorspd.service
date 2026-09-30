@@ -11,6 +11,10 @@ Type=exec
 ExecStartPre=/usr/sbin/modprobe fastrpc
 ExecStartPre=/bin/sh -c 'for i in $$(seq 60); do [ -e /dev/fastrpc-adsp-secure ] && exit 0; sleep 1; done; exit 1'
 ExecStart=/usr/sbin/adsprpcd sensorspd
+# Started only once the PD has published its sensors: iio-sensor-proxy
+# looks them up a single time.
+ExecStartPost=/usr/libexec/piano-sensors/piano-sensors-wait
+TimeoutStartSec=180
 Restart=on-failure
 RestartSec=5
 

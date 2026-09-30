@@ -13,7 +13,7 @@ Mainline Linux already talks to the sensors hub: the `fastrpc` driver exposes th
 | Path | Purpose |
 |---|---|
 | `patches/iio-sensor-proxy/` | Patch applied to Debian's `iio-sensor-proxy` source package (GPL-2+) |
-| `piano-sensors/` | Native `piano-sensors` package: odm and persist import, `adsprpcd-sensorspd` service, udev rule with the accelerometer mount matrix, systemd drop-in, APT pin |
+| `piano-sensors/` | Native `piano-sensors` package: odm and persist import, `adsprpcd-sensorspd` service (ready only once the sensors PD has published every sensor iio-sensor-proxy uses), udev rule with the accelerometer mount matrix, systemd drop-in, APT pin |
 | `scripts/build-sensors-debs.sh` | Builds everything inside a Debian trixie arm64 system; writes `all/`, `runtime/` and `SHA256SUMS` |
 | `scripts/build-in-container.sh` | Runs the build in a clean `debian:trixie` container on an arm64 host |
 | `.github/workflows/build.yml` | CI: shellcheck, then the build on an arm64 runner |
