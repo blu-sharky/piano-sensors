@@ -14,6 +14,7 @@ Depends: ${misc:Depends},
          fastrpc-support (>= 1.0.7),
          iio-sensor-proxy (>= 3.9-1+piano1),
          kmod,
+         libssc-bin,
          mount,
          python3
 Conflicts: droid-juicer, hexagonrpcd
