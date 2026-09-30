@@ -9,13 +9,17 @@ Rules-Requires-Root: no
 Package: piano-sensors
 Architecture: all
 Depends: ${misc:Depends},
+         dmsetup,
+         erofs-utils,
          fastrpc-support (>= 1.0.7),
          iio-sensor-proxy (>= 3.9-1+piano1),
          kmod,
-         mount
+         mount,
+         python3
 Conflicts: droid-juicer, hexagonrpcd
 Description: Sensors support for the Xiaomi Pad 8 Pro (piano)
- Imports the sensors registry and calibration from the tablet's persist
- partition on first boot (mounted read-only), serves the ADSP sensors PD
- with adsprpcd, and sets up iio-sensor-proxy for the SM8750 sensors hub:
+ Imports the sensors PD inputs from the tablet's own partitions on first
+ boot (the JSON configuration from odm, the registry and calibration from
+ persist, both opened read-only), serves the ADSP sensors PD with
+ adsprpcd, and sets up iio-sensor-proxy for the SM8750 sensors hub:
  accelerometer mount matrix and start order.

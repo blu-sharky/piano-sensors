@@ -1,28 +1,79 @@
 #!/bin/sh
-# piano-sensors-import - stage the sensors registry for the ADSP sensors PD.
+# piano-sensors-import - stage the sensors PD inputs for adsprpcd.
 #
-# The sensors PD of the Xiaomi Pad 8 Pro keeps its registry and calibration
-# on the persist partition (/mnt/vendor/persist/sensors under Android), which
-# belongs to the individual tablet. Nothing is shipped: on first boot the
-# directory is copied from persist, mounted read-only with noload (no journal
-# replay), so the partition Android uses is never written. The ADSP updates
-# its registry in the copy through adsprpcd.
+# The sensors PD of the Xiaomi Pad 8 Pro reads its JSON configuration from
+# /odm/etc/sensors/config (json.lst and the files it lists) and keeps its
+# registry and calibration in /mnt/vendor/persist/sensors. Without json.lst
+# it gives up before reading the registry, even a valid one. Both belong to
+# the individual tablet, so nothing is shipped: on first boot they are copied
+# from the device's own partitions, and adsprpcd, which opens the paths the
+# ADSP asks for as they are, reaches the copies through symlinks.
 #
-# Delete /var/lib/piano-sensors/persist/sensors to import it again.
+#   odm      EROFS logical partition inside super: mapped read-only with
+#            device-mapper from the super metadata, read with dump.erofs,
+#            never mounted
+#   persist  ext4, mounted read-only with noload (no journal replay), so the
+#            partition Android uses is never written; the ADSP updates its
+#            registry in the copy
+#
+# Each part is imported only while it is missing; delete it to re-import.
 set -eu
 
 ROOT=${PIANO_SENSORS_ROOT:-/var/lib/piano-sensors}
+ODM=${PIANO_SENSORS_ODM:-}
+SUPER=${PIANO_SENSORS_SUPER:-/dev/disk/by-partlabel/super}
+ODM_NAME=${PIANO_SENSORS_ODM_NAME:-odm_a}
+DM_NAME=piano-sensors-odm
 PERSIST=${PIANO_SENSORS_PERSIST:-/dev/disk/by-partlabel/persist}
-LINK=${PIANO_SENSORS_LINK:-/mnt/vendor/persist/sensors}
+CONFIG_DIR=/etc/sensors/config
+CONFIG_LINK=${PIANO_SENSORS_CONFIG_LINK:-/odm/etc/sensors/config}
+PERSIST_LINK=${PIANO_SENSORS_LINK:-/mnt/vendor/persist/sensors}
 
 log() { echo "piano-sensors-import: $*"; }
 
-if [ ! -d "$ROOT/persist/sensors" ]; then
-    # Block devices can still be settling this early.
+# Block devices can still be settling this early; give them a moment.
+wait_for() {
     i=0
-    while [ ! -e "$PERSIST" ] && [ "$i" -lt 30 ]; do sleep 1; i=$((i + 1)); done
-    [ -e "$PERSIST" ] || { log "$PERSIST did not appear"; exit 1; }
-    mkdir -p "$ROOT"
+    while [ ! -e "$1" ] && [ "$i" -lt 30 ]; do sleep 1; i=$((i + 1)); done
+    [ -e "$1" ] || { log "$1 did not appear"; exit 1; }
+}
+
+map_odm() {
+    modprobe dm_mod 2>/dev/null || true
+    dmsetup remove "$DM_NAME" 2>/dev/null || true
+    table=$(/usr/libexec/piano-sensors/piano-sensors-lp-table "$SUPER" "$ODM_NAME")
+    [ -n "$table" ] || { log "$ODM_NAME has no extents in $SUPER"; exit 1; }
+    printf '%s\n' "$table" | dmsetup create --readonly "$DM_NAME"
+    ODM=/dev/mapper/$DM_NAME
+    trap 'dmsetup remove "$DM_NAME" 2>/dev/null || true' EXIT
+}
+
+mkdir -p "$ROOT"
+
+if [ ! -s "$ROOT/odm/config/json.lst" ]; then
+    if [ -z "$ODM" ]; then
+        wait_for "$SUPER"
+        map_odm
+    fi
+    mkdir -p "$ROOT/odm"
+    tmp=$(mktemp -d "$ROOT/odm/.config.XXXXXX")
+    # Copy the whole directory: json.lst names files odm does not carry
+    # (the PD skips those), and dump.erofs --cat exits 0 on a missing path.
+    n=0
+    for name in $(dump.erofs --ls --path="$CONFIG_DIR" "$ODM" |
+                  awk 'f && $2 == 1 { print $3 } $1 == "NID" && $2 == "TYPE" { f = 1 }'); do
+        dump.erofs --path="$CONFIG_DIR/$name" --cat "$ODM" > "$tmp/$name"
+        n=$((n + 1))
+    done
+    [ -s "$tmp/json.lst" ] || { rm -rf "$tmp"; log "no sensors configuration in $ODM"; exit 1; }
+    chmod 0755 "$tmp"
+    rm -rf "$ROOT/odm/config"
+    mv "$tmp" "$ROOT/odm/config"
+    log "imported $n sensors configuration files from $ODM"
+fi
+
+if [ ! -d "$ROOT/persist/sensors" ]; then
+    wait_for "$PERSIST"
     mnt=$(mktemp -d /run/piano-sensors-persist.XXXXXX)
     tmp=$(mktemp -d "$ROOT/.persist.XXXXXX")
     mount -t ext4 -o ro,noload,nodev,nosuid,noexec "$PERSIST" "$mnt"
@@ -30,6 +81,7 @@ if [ ! -d "$ROOT/persist/sensors" ]; then
     if [ -d "$mnt/sensors" ]; then
         cp -a "$mnt/sensors" "$tmp/sensors" || status=$?
     else
+        # No calibration yet: the sensors PD starts from defaults.
         mkdir "$tmp/sensors"
         log "no sensors directory on persist"
     fi
@@ -42,6 +94,9 @@ if [ ! -d "$ROOT/persist/sensors" ]; then
     log "imported the sensors registry and calibration from $PERSIST"
 fi
 
-# adsprpcd opens the paths the ADSP asks for as they are.
-mkdir -p "$(dirname "$LINK")"
-ln -sfn "$ROOT/persist/sensors" "$LINK"
+link() {
+    mkdir -p "$(dirname "$2")"
+    ln -sfn "$1" "$2"
+}
+link "$ROOT/odm/config" "$CONFIG_LINK"
+link "$ROOT/persist/sensors" "$PERSIST_LINK"
