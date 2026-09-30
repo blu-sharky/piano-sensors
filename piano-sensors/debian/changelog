@@ -1,3 +1,13 @@
+piano-sensors (4) trixie; urgency=medium
+
+  * Import the odm JSON sensor configuration again, and link
+    /odm/etc/sensors/config to it: after every ADSP start the sensors PD
+    reads json.lst first and gives up without it, even with a valid
+    registry on persist. Version 3 only worked on an ADSP that had already
+    read its configuration.
+
+ -- piano mainline contributors <piano@localhost>  Wed, 30 Sep 2026 20:00:00 +0800
+
 piano-sensors (3) trixie; urgency=medium
 
   * Serve the sensors PD with adsprpcd (Qualcomm FastRPC, Debian

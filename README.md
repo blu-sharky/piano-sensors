@@ -13,7 +13,7 @@ Mainline Linux already talks to the sensors hub: the `fastrpc` driver exposes th
 | Path | Purpose |
 |---|---|
 | `patches/iio-sensor-proxy/` | Patch applied to Debian's `iio-sensor-proxy` source package (GPL-2+) |
-| `piano-sensors/` | Native `piano-sensors` package: registry import, `adsprpcd-sensorspd` service, udev rule with the accelerometer mount matrix, systemd drop-in, APT pin |
+| `piano-sensors/` | Native `piano-sensors` package: odm and persist import, `adsprpcd-sensorspd` service, udev rule with the accelerometer mount matrix, systemd drop-in, APT pin |
 | `scripts/build-sensors-debs.sh` | Builds everything inside a Debian trixie arm64 system; writes `all/`, `runtime/` and `SHA256SUMS` |
 | `scripts/build-in-container.sh` | Runs the build in a clean `debian:trixie` container on an arm64 host |
 | `.github/workflows/build.yml` | CI: shellcheck, then the build on an arm64 runner |
@@ -24,9 +24,12 @@ The source packages come from Debian unstable (libssc 0.4.4-2, iio-sensor-proxy 
 
 ## Device data
 
-The sensors PD keeps its registry and calibration on the persist partition, which belongs to each tablet; nothing is shipped. On first boot `piano-sensors-import` copies `sensors/` from persist, mounted read-only with `noload` so the partition is never written, into `/var/lib/piano-sensors/persist/sensors`, and links `/mnt/vendor/persist/sensors` (the path the PD asks for) to it. The ADSP updates its registry in that copy. With the registry Android left on persist, the PD does not need the JSON sensor configuration from odm.
+The sensors PD needs files that belong to each tablet: the JSON sensor configuration on the odm partition (`/odm/etc/sensors/config/json.lst` and the files it lists), and the registry and calibration on persist (`/mnt/vendor/persist/sensors`). After every ADSP start the PD reads `json.lst` first and gives up without it, even when the registry on persist is valid. None of these files are shipped. On first boot `piano-sensors-import` copies them into `/var/lib/piano-sensors` and links the two paths the PD asks for to the copies:
 
-Delete `/var/lib/piano-sensors/persist/sensors` to import it again.
+- odm_a (EROFS) is a logical partition inside `super`: it is mapped read-only with device-mapper from the super metadata and read with `dump.erofs`, never mounted;
+- persist (ext4) is mounted read-only with `noload`, so it is never written; the ADSP updates its registry in the copy.
+
+Delete `/var/lib/piano-sensors/odm/config` or `/var/lib/piano-sensors/persist/sensors` to import that part again.
 
 ## Build
 
